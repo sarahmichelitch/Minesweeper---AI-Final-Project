@@ -5,6 +5,7 @@ from PIL import ImageTk, Image
 from typing import List, Set, Tuple, Dict
 from itertools import combinations
 from collections import defaultdict
+import time
 
 # Original color definitions
 colors = {
@@ -193,6 +194,10 @@ class MineSweeper:
         self.buttons = []
         self.solver = MinesweeperSolver(self)
         self.auto_solve = False
+        self.solve_start_time = None
+        self.solve_total_time = 0.0
+        self.move_count = 0
+        
         for i in range(self.ROW+2):
             temp = []
             for j in range(self.COLUMNS+2):
@@ -205,6 +210,10 @@ class MineSweeper:
         # Load images after initializing Tkinter window
         self.flag_img = ImageTk.PhotoImage(Image.open("img/flag.png"))
         self.mine_img = ImageTk.PhotoImage(Image.open("img/mine.png"))
+
+        # Timer label
+        self.timer_label = tk.Label(self.window, text="Time: 0.00s | Moves: 0", font=('Calibri', 12))
+
 
     def insert_mines(self, number: int):
         index_mines = self.get_mines_places(number)
@@ -325,15 +334,36 @@ class MineSweeper:
                              command=self.toggle_auto_solve)
         auto_btn.pack(side=tk.LEFT, padx=5)
 
+        # Add timer label to the control frame
+        self.timer_label.grid(row=0, column=self.COLUMNS+2, padx=5)
+
     def make_ai_move(self):
         if not self.IS_GAME_OVER:
+            # Start timer on first move
+            if self.solve_start_time is None:
+                self.solve_start_time = time.time()
+
             x, y = self.solver.make_move()
             btn = self.buttons[x][y]
             self.click(btn)
+            
+            # Update move count and timer
+            self.move_count += 1
+            current_time = time.time()
+            self.solve_total_time = current_time - self.solve_start_time
+            self.update_timer_label()
+
+    def update_timer_label(self):
+        self.timer_label.config(text=f"Time: {self.solve_total_time:.2f}s | Moves: {self.move_count}")
 
     def toggle_auto_solve(self):
         self.auto_solve = not self.auto_solve
         if self.auto_solve:
+            # Reset timer and move count
+            self.solve_start_time = time.time()
+            self.solve_total_time = 0.0
+            self.move_count = 0
+            self.update_timer_label()
             self.auto_solve_step()
 
     def auto_solve_step(self):
@@ -369,6 +399,12 @@ class MineSweeper:
         self.create_widgets()
         MineSweeper.IS_FIRST_CLICK = True
         MineSweeper.IS_GAME_OVER = False
+        
+        # Reset timer and move count
+        self.solve_start_time = None
+        self.solve_total_time = 0.0
+        self.move_count = 0
+        self.update_timer_label()
 
     def create_settings_win(self):
         win_settings = tk.Toplevel(self.window)
