@@ -7,7 +7,7 @@ from itertools import combinations
 from collections import defaultdict
 import time
 
-# Original color definitions
+# Original color definitions for display
 colors = {
     1: '#0000FF',
     2: '#008200',
@@ -20,21 +20,23 @@ colors = {
 }
 
 
+# Button class to represent each cell in the grid
 class MyButton(tk.Button):
     def __init__(self, master, x, y, number=0, *args, **kwargs):
         super(MyButton, self).__init__(
             master, *args, **kwargs, width=3, font='Calibri 15 bold')
-        self.x = x
-        self.y = y
-        self.number = number
+        self.x = x # row index
+        self.y = y # column index
+        self.number = number # cell number
         self.is_mine = False
-        self.count_bomb = 0
+        self.count_bomb = 0 # number of neighboring mines
         self.is_open = False
 
     def __repr__(self):
         return f'MyButton{self.x} {self.y} {self.number} {self.is_mine}'
 
 
+# AI solver agent class
 class MinesweeperSolver:
     def __init__(self, game: 'MineSweeper'):
         self.game = game
@@ -48,36 +50,43 @@ class MinesweeperSolver:
 
     def get_unopened_neighbors(self, x: int, y: int) -> Set[Tuple[int, int]]:
         neighbors = set()
-        for dx in [-1, 0, 1]:
-            for dy in [-1, 0, 1]:
+        for dx in [-1, 0, 1]: # iterate over neighboring rows
+            for dy in [-1, 0, 1]: # iterate over neighboring columns
+
+                # Skip the cell itself
                 if dx == 0 and dy == 0:
                     continue
-                new_x, new_y = x + dx, y + dy
+
+                new_x, new_y = x + dx, y + dy # calculate coordinates of the neighboring cell
+
+                # Add the cell to neighbors after checking for bounds and unopened state
                 if (1 <= new_x <= self.game.ROW and
                     1 <= new_y <= self.game.COLUMNS and
                         not self.game.buttons[new_x][new_y].is_open):
                     neighbors.add((new_x, new_y))
-        return neighbors
+
+        return neighbors # return the set of unopened neighbors
 
     def update_constraints(self):
         self.constraints.clear()
         self.frontier.clear()
 
-        for i in range(1, self.game.ROW + 1):
-            for j in range(1, self.game.COLUMNS + 1):
+        for i in range(1, self.game.ROW + 1): # iterate through rows
+            for j in range(1, self.game.COLUMNS + 1): # iterate through columns
                 btn = self.game.buttons[i][j]
-                if btn.is_open and btn.count_bomb > 0:
+                if btn.is_open and btn.count_bomb > 0: # only for cells with neighboring mines
                     unopened = self.get_unopened_neighbors(i, j)
-                    if unopened:
-                        known_mines = len(
-                            unopened.intersection(self.known_mines))
-                        remaining_mines = btn.count_bomb - known_mines
+                    if unopened: # only if there are unopened neighbor cells
+                        known_mines = len(unopened.intersection(self.known_mines)) # number of neighboring KNOWN mines
+                        remaining_mines = btn.count_bomb - known_mines # number of undiscovered neighboring mines
                         unopened = unopened.difference(self.known_mines)
+                        # Update constraints and frontier if there are unopened neighbors
                         if unopened:
                             self.constraints[(i, j)].append(
                                 (unopened, remaining_mines))
                             self.frontier.update(unopened)
 
+    # Basic solver for if the number of neighboring mines equal the number of unopened neighbors or the number of known mines
     def basic_solve(self) -> bool:
         made_progress = False
 
@@ -85,6 +94,8 @@ class MinesweeperSolver:
 
         for cell, constraint_list in self.constraints.items():
             for unopened_cells, remaining_mines in constraint_list:
+
+                # If the number of neighboring mines equals the number of unopened neighbors, mark them all as mines
                 if len(unopened_cells) == remaining_mines and remaining_mines > 0:
                     for mine in unopened_cells:
                         if mine not in self.known_mines:
@@ -92,6 +103,7 @@ class MinesweeperSolver:
                             self.mines_found += 1
                             made_progress = True
 
+                # If there are no undiscovered neighboring mines, mark the rest of the neighbors as safe
                 elif remaining_mines == 0:
                     for safe in unopened_cells:
                         if safe not in self.known_safe:
@@ -100,6 +112,7 @@ class MinesweeperSolver:
 
         return made_progress
 
+    # Advanced solver comparing overlapping constaints to further deduce guaranteeed safe moves
     def advanced_solve(self) -> bool:
         made_progress = False
 
@@ -111,12 +124,15 @@ class MinesweeperSolver:
                     diff_cells = cells2.difference(cells1)
                     diff_mines = mines2 - mines1
 
+                    # If remaining cells are mines, mark them as such
                     if len(diff_cells) == diff_mines and diff_mines > 0:
                         for mine in diff_cells:
                             if mine not in self.known_mines:
                                 self.known_mines.add(mine)
                                 self.mines_found += 1
                                 made_progress = True
+                    
+                    # If remaining cell are safe, mark them as such
                     elif diff_mines == 0:
                         for safe in diff_cells:
                             if safe not in self.known_safe:
@@ -125,6 +141,7 @@ class MinesweeperSolver:
 
         return made_progress
 
+    # Calculate risk probabilities for unopened cells for when there are no guaranteed safe moves
     def calculate_cell_probabilities(self) -> Dict[Tuple[int, int], float]:
         probabilities = defaultdict(float)
         remaining_mines = self.total_mines - self.mines_found
@@ -150,6 +167,7 @@ class MinesweeperSolver:
 
         return probabilities
 
+    # Get the unopened cell with the lowest risk probability
     def get_lowest_risk_move(self) -> Tuple[int, int]:
         probabilities = self.calculate_cell_probabilities()
 
@@ -181,6 +199,7 @@ class MinesweeperSolver:
         return self.get_lowest_risk_move()
 
 
+# Functionality and GUI for the actual Minesweeper game
 class MineSweeper:
     window = tk.Tk()
     ROW = 10
