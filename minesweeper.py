@@ -198,6 +198,42 @@ class MinesweeperSolver:
         # If no safe moves found, use probability estimation
         return self.get_lowest_risk_move()
 
+class MinesweeperTester:
+    def _init__(self):
+        self.test = test
+        self.total_time = 0
+        self.total_win_time = 0
+        self.total_lose_time = 0
+        self.total_steps = 0
+        self.total_win_steps = 0
+        self.total_lose_steps = 0
+        # self.is_win = False
+        self.is_first_run = True
+        self.game_results: List[List[bool, float, int]] = [] # List of list of results for each game [is_win, time, num_moves]
+        # self.game_time = 0
+
+    def run_one_game():
+        game = MineSweeper()
+        game.testing = True
+        game.start()
+    
+    def run_testing(num_games):
+        for this_game in range(num_games):
+            if this_game == 0:
+                test.is_first_run = True
+            else:
+                test.is_first_run = False
+
+            test.run_one_game()
+            # if test.is_win:
+            if test.game_results[this_game][0]:
+                print("W")
+                print(test.game_results)
+                # print(test.game_time)
+            else:
+                print("L")
+                print(test.game_results)
+                # print(test.game_time)
 
 # Functionality and GUI for the actual Minesweeper game
 class MineSweeper:
@@ -206,6 +242,8 @@ class MineSweeper:
     COLUMNS = 7
     MINES = 7
     IS_GAME_OVER = False
+    IS_LOSS = False
+    IS_WIN = False
     IS_FIRST_CLICK = True
     window.geometry('+800+200')
 
@@ -216,6 +254,7 @@ class MineSweeper:
         self.solve_start_time = None
         self.solve_total_time = 0.0
         self.move_count = 0
+        self.testing = False
         
         for i in range(self.ROW+2):
             temp = []
@@ -309,6 +348,16 @@ class MineSweeper:
                                   disabledforeground='black')
             clicked_button.is_open = True
             self.IS_GAME_OVER = True
+            self.IS_LOSS = True
+            if self.testing:
+                # test.is_win = False
+                if test.is_first_run:
+                    # test.game_time = 0
+                    test.game_results = []
+                test.game_results.append([False, self.solve_total_time, self.move_count])
+                # test.game_time += self.solve_total_time
+                self.window.quit()
+                return
             showinfo('Game over', 'You lose!')
             for i in range(1, self.ROW+1):
                 for j in range(1, self.COLUMNS+1):
@@ -329,6 +378,16 @@ class MineSweeper:
         # Check for win condition
         if self.check_win():
             self.IS_GAME_OVER = True
+            self.IS_WIN = True
+            if self.testing:
+                # test.is_win = True
+                if test.is_first_run:
+                    # test.game_time = 0
+                    test.game_results = []
+                test.game_results.append([True, self.solve_total_time, self.move_count])
+                # test.game_time += self.solve_total_time
+                self.window.quit()
+                return
             showinfo('Congratulations', 'You won!')
 
     def check_win(self):
@@ -469,9 +528,15 @@ class MineSweeper:
 
     def start(self):
         self.create_widgets()
+        if self.testing:
+            self.toggle_auto_solve()
         MineSweeper.window.mainloop()
 
 
 if __name__ == "__main__":
-    game = MineSweeper()
-    game.start()
+    # game = MineSweeper()
+    # game.start()
+
+    # Running tester
+    test = MinesweeperTester
+    test.run_testing(1)
