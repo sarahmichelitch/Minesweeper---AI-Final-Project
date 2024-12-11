@@ -6,6 +6,8 @@ from typing import List, Set, Tuple, Dict
 from itertools import combinations
 from collections import defaultdict
 import time
+import argparse
+import sys
 
 # Original color definitions for display
 colors = {
@@ -198,19 +200,13 @@ class MinesweeperSolver:
         # If no safe moves found, use probability estimation
         return self.get_lowest_risk_move()
 
+
+# Test class
 class MinesweeperTester:
     def _init__(self):
         self.test = test
-        self.total_time = 0
-        self.total_win_time = 0
-        self.total_lose_time = 0
-        self.total_steps = 0
-        self.total_win_steps = 0
-        self.total_lose_steps = 0
-        # self.is_win = False
         self.is_first_run = True
-        self.game_results: List[List[bool, float, int]] = [] # List of list of results for each game [is_win, time, num_moves]
-        # self.game_time = 0
+        self.game_results: List[List[bool, float, int]] = [] # list of list of results for each game [is_win, time, num_moves]
 
     def run_one_game():
         game = MineSweeper()
@@ -218,22 +214,53 @@ class MinesweeperTester:
         game.start()
     
     def run_testing(num_games):
+        is_win_index = 0
+        time_index = 1
+        num_moves_index = 2
+
+        # Initialize variables to keep track of totals
+        total_wins = 0
+        total_loses = 0
+
+        total_time = 0
+        total_win_time = 0
+        total_lose_time = 0
+
+        total_steps = 0
+        total_win_steps = 0
+        total_lose_steps = 0
+
+        # Loop for number of games desired for testing
         for this_game in range(num_games):
+
+            # Set booleans to know if variables need to be initialized
             if this_game == 0:
                 test.is_first_run = True
             else:
                 test.is_first_run = False
 
+            # Run a game
             test.run_one_game()
-            # if test.is_win:
-            if test.game_results[this_game][0]:
-                print("W")
-                print(test.game_results)
-                # print(test.game_time)
+
+            # Update totals with results from the run
+            total_time += test.game_results[this_game][time_index]
+            total_steps += test.game_results[this_game][num_moves_index]
+
+            if test.game_results[this_game][is_win_index]:
+                total_wins += 1
+                total_win_time += test.game_results[this_game][time_index]
+                total_win_steps += test.game_results[this_game][num_moves_index]
             else:
-                print("L")
-                print(test.game_results)
-                # print(test.game_time)
+                total_loses += 1
+                total_lose_time += test.game_results[this_game][time_index]
+                total_lose_steps += test.game_results[this_game][num_moves_index]
+
+        # Print results
+        print("TEST RESULTS:\n-------------")
+        print("Total Wins:", total_wins ,"\nTotal Games:", num_games ,"\nWin Percentage:", total_wins/num_games)
+        print("---")
+        print("Average Time to Win:", total_win_time/total_wins ,"\nAverage Steps to Win:", total_win_steps/total_wins)
+        print("---")
 
 # Functionality and GUI for the actual Minesweeper game
 class MineSweeper:
@@ -275,7 +302,7 @@ class MineSweeper:
 
     def insert_mines(self, number: int):
         index_mines = self.get_mines_places(number)
-        print(index_mines)
+        # print(index_mines)
         for i in range(1, self.ROW+1):
             for j in range(1, self.COLUMNS+1):
                 btn = self.buttons[i][j]
@@ -284,7 +311,7 @@ class MineSweeper:
 
     def get_mines_places(self, exclude_number: int):
         indexes = list(range(1, self.COLUMNS * self.ROW + 1))
-        print(f'Exclude number {exclude_number}')
+        # print(f'Exclude number {exclude_number}')
         indexes.remove(exclude_number)
         shuffle(indexes)
         return indexes[:self.MINES]
@@ -341,7 +368,7 @@ class MineSweeper:
         if self.IS_FIRST_CLICK:
             self.insert_mines(clicked_button.number)
             self.count_mine_in_buttons()
-            self.print_buttons()
+            # self.print_buttons()
             self.IS_FIRST_CLICK = False
         if clicked_button.is_mine:
             clicked_button.config(image=self.mine_img, background='red',
@@ -349,15 +376,15 @@ class MineSweeper:
             clicked_button.is_open = True
             self.IS_GAME_OVER = True
             self.IS_LOSS = True
+
+            # Different response for testing (due to looping)
             if self.testing:
-                # test.is_win = False
                 if test.is_first_run:
-                    # test.game_time = 0
                     test.game_results = []
                 test.game_results.append([False, self.solve_total_time, self.move_count])
-                # test.game_time += self.solve_total_time
                 self.window.quit()
                 return
+
             showinfo('Game over', 'You lose!')
             for i in range(1, self.ROW+1):
                 for j in range(1, self.COLUMNS+1):
@@ -379,19 +406,19 @@ class MineSweeper:
         if self.check_win():
             self.IS_GAME_OVER = True
             self.IS_WIN = True
+
+            # Different response for testing (due to looping)
             if self.testing:
-                # test.is_win = True
                 if test.is_first_run:
-                    # test.game_time = 0
                     test.game_results = []
                 test.game_results.append([True, self.solve_total_time, self.move_count])
-                # test.game_time += self.solve_total_time
                 self.window.quit()
                 return
+
             showinfo('Congratulations', 'You won!')
 
+    # Check if all non-mine cells are opened
     def check_win(self):
-        """Check if all non-mine cells are opened."""
         for i in range(1, self.ROW+1):
             for j in range(1, self.COLUMNS+1):
                 btn = self.buttons[i][j]
@@ -515,8 +542,8 @@ class MineSweeper:
         MineSweeper.MINES = int(mine.get())
         self.reload()
 
+# Print the game board state to console for debugging
     def print_buttons(self):
-        """Print the game board state to console for debugging."""
         for i in range(1, MineSweeper.ROW + 1):
             for j in range(1, MineSweeper.COLUMNS + 1):
                 btn = self.buttons[i][j]
@@ -534,9 +561,19 @@ class MineSweeper:
 
 
 if __name__ == "__main__":
-    # game = MineSweeper()
-    # game.start()
+    # Create argument parser and update the arguments
+    # Resource used for understanding argparse - https://www.geeksforgeeks.org/command-line-option-and-argument-parsing-using-argparse-in-python/
+    parser = argparse.ArgumentParser(description="Minesweeper Game vs Testing")
+    parser.add_argument('-test', type=int, help="Run testing for a given number of games", default=None)
 
-    # Running tester
-    test = MinesweeperTester
-    test.run_testing(1)
+    args = parser.parse_args()
+
+    # Run the game if no test flag is given
+    if args.test is None:
+        game = MineSweeper()
+        game.start()
+
+    # If test flag is given, run the tester with the number of games specified
+    else:
+        test = MinesweeperTester
+        test.run_testing(args.test)
