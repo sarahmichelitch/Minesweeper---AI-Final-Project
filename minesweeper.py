@@ -254,12 +254,19 @@ class MinesweeperTester:
                 total_loses += 1
                 total_lose_time += test.game_results[this_game][time_index]
                 total_lose_steps += test.game_results[this_game][num_moves_index]
+        
+        if total_wins > 0:
+            average_win_time = total_win_time/total_wins
+            average_win_steps = total_win_steps/total_wins
+        else:
+            average_win_time = 0.0
+            average_win_steps = 0.0
 
         # Print results
         print("TEST RESULTS:\n-------------")
-        print("Total Wins:", total_wins ,"\nTotal Games:", num_games ,"\nWin Percentage:", total_wins/num_games)
+        print("Total Wins:", total_wins ,"\nTotal Games:", num_games ,"\nWin Percentage:", (total_wins/num_games)*100)
         print("---")
-        print("Average Time to Win:", total_win_time/total_wins ,"\nAverage Steps to Win:", total_win_steps/total_wins)
+        print("Average Time to Win:", average_win_time ,"\nAverage Steps to Win:", average_win_steps)
         print("---")
 
 # Functionality and GUI for the actual Minesweeper game
