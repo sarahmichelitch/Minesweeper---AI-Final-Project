@@ -10,15 +10,22 @@ import argparse
 import sys
 
 # Original color definitions for display
-colors = {
-    1: '#0000FF',
-    2: '#008200',
-    3: '#FF0000',
-    4: '#000084',
-    5: '#840000',
-    6: '#008284',
-    7: '#840084',
-    8: '#800020'
+COLORS = {
+    1: '#0000FF',  # Blue
+    2: '#008200',  # Green
+    3: '#FF0000',  # Red
+    4: '#000084',  # Dark Blue
+    5: '#840000',  # Dark Red
+    6: '#008284',  # Cyan
+    7: '#840084',  # Purple
+    8: '#800020'   # Maroon
+}
+
+BUTTON_COLORS = {
+    'default': '#f0f0f0',      # Light gray for unopened cells
+    'revealed': '#ffffff',      # White for revealed cells
+    'mine': '#ff0000',         # Red for mines
+    'flagged': '#e0e0e0'       # Slightly darker gray for flagged cells
 }
 
 
@@ -26,7 +33,8 @@ colors = {
 class MyButton(tk.Button):
     def __init__(self, master, x, y, number=0, *args, **kwargs):
         super(MyButton, self).__init__(
-            master, *args, **kwargs, width=3, font='Calibri 15 bold')
+            master, *args, **kwargs, width=3, font='Calibri 15 bold',
+            background=BUTTON_COLORS['default'])  # Set default background
         self.x = x  # row index
         self.y = y  # column index
         self.number = number  # cell number
@@ -419,12 +427,17 @@ class MineSweeper:
         queue = [btn]
         while queue:
             cur_btn = queue.pop()
-            color = colors.get(cur_btn.count_bomb, 'black')
+            color = COLORS.get(cur_btn.count_bomb, 'black')
             if cur_btn.count_bomb:
                 cur_btn.config(text=cur_btn.count_bomb,
-                               disabledforeground=color)
+                               disabledforeground=color,
+                               # Set revealed color
+                               background=BUTTON_COLORS['revealed'])
             else:
-                cur_btn.config(text='', disabledforeground=color)
+                cur_btn.config(text='',
+                               disabledforeground=color,
+                               # Set revealed color
+                               background=BUTTON_COLORS['revealed'])
             cur_btn.is_open = True
             cur_btn.config(state='disabled')
             cur_btn.config(relief=tk.SUNKEN)
@@ -458,10 +471,14 @@ class MineSweeper:
             cur_btn['state'] = 'disabled'
             cur_btn.flag_image = self.flag_img
             cur_btn['image'] = cur_btn.flag_image
+            # Set flagged color
+            cur_btn.config(background=BUTTON_COLORS['flagged'])
         elif cur_btn['state'] == 'disabled':
             cur_btn['image'] = ''
             cur_btn.flag_image = None
             cur_btn['state'] = 'normal'
+            # Reset to default color
+            cur_btn.config(background=BUTTON_COLORS['default'])
 
     def click(self, clicked_button: MyButton):
         if self.IS_GAME_OVER:
@@ -471,15 +488,16 @@ class MineSweeper:
             self.count_mine_in_buttons()
             self.IS_FIRST_CLICK = False
         if clicked_button.is_mine:
-            if not self.testing:  # Only try to show images in GUI mode
+            if not self.testing:
                 clicked_button.mine_image = self.mine_img
-                clicked_button.config(image=clicked_button.mine_image, background='red',
+                clicked_button.config(image=clicked_button.mine_image,
+                                      # Set mine color
+                                      background=BUTTON_COLORS['mine'],
                                       disabledforeground='black')
             clicked_button.is_open = True
             self.IS_GAME_OVER = True
             self.IS_LOSS = True
 
-            # Different response for testing (due to looping)
             if self.testing:
                 if test.is_first_run:
                     test.game_results = []
@@ -489,18 +507,22 @@ class MineSweeper:
                 return
 
             showinfo('Game over', 'You lose!')
-            if not self.testing:  # Only try to show images in GUI mode
+            if not self.testing:
                 for i in range(1, self.ROW+1):
                     for j in range(1, self.COLUMNS+1):
                         btn = self.buttons[i][j]
                         if btn.is_mine:
                             btn.mine_image = self.mine_img
                             btn['image'] = btn.mine_image
+                            # Set mine color
+                            btn.config(background=BUTTON_COLORS['mine'])
         else:
-            color = colors.get(clicked_button.count_bomb, 'black')
+            color = COLORS.get(clicked_button.count_bomb, 'black')
             if clicked_button.count_bomb:
                 clicked_button.config(text=clicked_button.count_bomb,
-                                      disabledforeground=color)
+                                      disabledforeground=color,
+                                      # Set revealed color
+                                      background=BUTTON_COLORS['revealed'])
                 clicked_button.is_open = True
             else:
                 self.breadth_first_search(clicked_button)
