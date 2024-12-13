@@ -317,7 +317,16 @@ class MineSweeper:
             MineSweeper.ROW = preset['rows']
             MineSweeper.COLUMNS = preset['columns']
             MineSweeper.MINES = preset['mines']
-            self.reload()
+
+            # Store current window reference
+            if not self.testing and hasattr(self, 'window'):
+                old_window = self.window
+                old_window.destroy()
+
+            # Reinitialize everything
+            self.__init__()
+            if not self.testing:
+                self.create_widgets()
 
     def __init__(self):
         self.testing = False  # Skip GUI initialization if in testing mode
@@ -447,9 +456,11 @@ class MineSweeper:
         cur_btn = event.widget
         if cur_btn['state'] == 'normal':
             cur_btn['state'] = 'disabled'
-            cur_btn['image'] = self.flag_img
+            cur_btn.flag_image = self.flag_img
+            cur_btn['image'] = cur_btn.flag_image
         elif cur_btn['state'] == 'disabled':
             cur_btn['image'] = ''
+            cur_btn.flag_image = None
             cur_btn['state'] = 'normal'
 
     def click(self, clicked_button: MyButton):
@@ -461,7 +472,8 @@ class MineSweeper:
             self.IS_FIRST_CLICK = False
         if clicked_button.is_mine:
             if not self.testing:  # Only try to show images in GUI mode
-                clicked_button.config(image=self.mine_img, background='red',
+                clicked_button.mine_image = self.mine_img
+                clicked_button.config(image=clicked_button.mine_image, background='red',
                                       disabledforeground='black')
             clicked_button.is_open = True
             self.IS_GAME_OVER = True
@@ -482,7 +494,8 @@ class MineSweeper:
                     for j in range(1, self.COLUMNS+1):
                         btn = self.buttons[i][j]
                         if btn.is_mine:
-                            btn['image'] = self.mine_img
+                            btn.mine_image = self.mine_img
+                            btn['image'] = btn.mine_image
         else:
             color = colors.get(clicked_button.count_bomb, 'black')
             if clicked_button.count_bomb:
@@ -593,11 +606,13 @@ class MineSweeper:
         self.add_ai_controls()
 
     def reload(self):
-        if not self.testing:
-            [child.destroy() for child in self.window.winfo_children()]
+        # Store current window reference
+        if not self.testing and hasattr(self, 'window'):
+            old_window = self.window
+            old_window.destroy()
 
+        # Reinitialize everything
         self.__init__()
-
         if not self.testing:
             self.create_widgets()
 
@@ -608,7 +623,8 @@ class MineSweeper:
         self.solve_start_time = None
         self.solve_total_time = 0.0
         self.move_count = 0
-        self.update_timer_label()
+        if not self.testing:
+            self.update_timer_label()
 
     def create_settings_win(self):
         win_settings = tk.Toplevel(self.window)
