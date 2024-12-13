@@ -27,11 +27,11 @@ class MyButton(tk.Button):
     def __init__(self, master, x, y, number=0, *args, **kwargs):
         super(MyButton, self).__init__(
             master, *args, **kwargs, width=3, font='Calibri 15 bold')
-        self.x = x # row index
-        self.y = y # column index
-        self.number = number # cell number
+        self.x = x  # row index
+        self.y = y  # column index
+        self.number = number  # cell number
         self.is_mine = False
-        self.count_bomb = 0 # number of neighboring mines
+        self.count_bomb = 0  # number of neighboring mines
         self.is_open = False
 
     def __repr__(self):
@@ -52,14 +52,14 @@ class MinesweeperSolver:
 
     def get_unopened_neighbors(self, x: int, y: int) -> Set[Tuple[int, int]]:
         neighbors = set()
-        for dx in [-1, 0, 1]: # iterate over neighboring rows
-            for dy in [-1, 0, 1]: # iterate over neighboring columns
+        for dx in [-1, 0, 1]:  # iterate over neighboring rows
+            for dy in [-1, 0, 1]:  # iterate over neighboring columns
 
                 # Skip the cell itself
                 if dx == 0 and dy == 0:
                     continue
 
-                new_x, new_y = x + dx, y + dy # calculate coordinates of the neighboring cell
+                new_x, new_y = x + dx, y + dy  # calculate coordinates of the neighboring cell
 
                 # Add the cell to neighbors after checking for bounds and unopened state
                 if (1 <= new_x <= self.game.ROW and
@@ -67,20 +67,23 @@ class MinesweeperSolver:
                         not self.game.buttons[new_x][new_y].is_open):
                     neighbors.add((new_x, new_y))
 
-        return neighbors # return the set of unopened neighbors
+        return neighbors  # return the set of unopened neighbors
 
     def update_constraints(self):
         self.constraints.clear()
         self.frontier.clear()
 
-        for i in range(1, self.game.ROW + 1): # iterate through rows
-            for j in range(1, self.game.COLUMNS + 1): # iterate through columns
+        for i in range(1, self.game.ROW + 1):  # iterate through rows
+            for j in range(1, self.game.COLUMNS + 1):  # iterate through columns
                 btn = self.game.buttons[i][j]
-                if btn.is_open and btn.count_bomb > 0: # only for cells with neighboring mines
+                if btn.is_open and btn.count_bomb > 0:  # only for cells with neighboring mines
                     unopened = self.get_unopened_neighbors(i, j)
-                    if unopened: # only if there are unopened neighbor cells
-                        known_mines = len(unopened.intersection(self.known_mines)) # number of neighboring KNOWN mines
-                        remaining_mines = btn.count_bomb - known_mines # number of undiscovered neighboring mines
+                    if unopened:  # only if there are unopened neighbor cells
+                        # number of neighboring KNOWN mines
+                        known_mines = len(
+                            unopened.intersection(self.known_mines))
+                        # number of undiscovered neighboring mines
+                        remaining_mines = btn.count_bomb - known_mines
                         unopened = unopened.difference(self.known_mines)
                         # Update constraints and frontier if there are unopened neighbors
                         if unopened:
@@ -133,7 +136,7 @@ class MinesweeperSolver:
                                 self.known_mines.add(mine)
                                 self.mines_found += 1
                                 made_progress = True
-                    
+
                     # If remaining cell are safe, mark them as such
                     elif diff_mines == 0:
                         for safe in diff_cells:
@@ -206,14 +209,29 @@ class MinesweeperTester:
     def _init__(self):
         self.test = test
         self.is_first_run = True
-        self.game_results: List[List[bool, float, int]] = [] # list of list of results for each game [is_win, time, num_moves]
+        # list of list of results for each game [is_win, time, num_moves]
+        self.game_results: List[List[bool, float, int]] = []
 
-    def run_one_game():
+    @staticmethod
+    def set_difficulty(game, difficulty):
+        """Set the game difficulty before starting."""
+        if difficulty in game.DIFFICULTY_PRESETS:
+            game.CURRENT_DIFFICULTY = difficulty
+            preset = game.DIFFICULTY_PRESETS[difficulty]
+            game.ROW = preset['rows']
+            game.COLUMNS = preset['columns']
+            game.MINES = preset['mines']
+
+    @staticmethod
+    def run_one_game(difficulty=None):
         game = MineSweeper()
+        if difficulty:
+            MinesweeperTester.set_difficulty(game, difficulty)
         game.testing = True
         game.start()
-    
-    def run_testing(num_games):
+
+    @classmethod
+    def run_testing(cls, num_games, difficulty=None):
         is_win_index = 0
         time_index = 1
         num_moves_index = 2
@@ -221,26 +239,23 @@ class MinesweeperTester:
         # Initialize variables to keep track of totals
         total_wins = 0
         total_loses = 0
-
         total_time = 0
         total_win_time = 0
         total_lose_time = 0
-
         total_steps = 0
         total_win_steps = 0
         total_lose_steps = 0
 
         # Loop for number of games desired for testing
         for this_game in range(num_games):
-
             # Set booleans to know if variables need to be initialized
             if this_game == 0:
                 test.is_first_run = True
             else:
                 test.is_first_run = False
 
-            # Run a game
-            test.run_one_game()
+            # Run a game with specified difficulty
+            cls.run_one_game(difficulty)
 
             # Update totals with results from the run
             total_time += test.game_results[this_game][time_index]
@@ -254,7 +269,7 @@ class MinesweeperTester:
                 total_loses += 1
                 total_lose_time += test.game_results[this_game][time_index]
                 total_lose_steps += test.game_results[this_game][num_moves_index]
-        
+
         if total_wins > 0:
             average_win_time = total_win_time/total_wins
             average_win_steps = total_win_steps/total_wins
@@ -262,24 +277,52 @@ class MinesweeperTester:
             average_win_time = 0.0
             average_win_steps = 0.0
 
-        # Print results
-        print("TEST RESULTS:\n-------------")
-        print("Total Wins:", total_wins ,"\nTotal Games:", num_games ,"\nWin Percentage:", (total_wins/num_games)*100)
+        # Print results with difficulty information
+        difficulty_str = f" ({difficulty} difficulty)" if difficulty else ""
+        print(f"TEST RESULTS{difficulty_str}:\n" +
+              "-" * (14 + len(difficulty_str)))
+        print(f"Total Wins: {total_wins}\nTotal Games: {
+              num_games}\nWin Percentage: {(total_wins/num_games)*100}")
         print("---")
-        print("Average Time to Win:", average_win_time ,"\nAverage Steps to Win:", average_win_steps)
+        print(f"Average Time to Win: {
+              average_win_time}\nAverage Steps to Win: {average_win_steps}")
         print("---")
 
-# Functionality and GUI for the actual Minesweeper game
+
 class MineSweeper:
+
+    """ How we decided the varying board dimensions for each difficulty:
+    https://minesweepergame.com/ranking-rules.php#:~:text=Players%20are%20ranked%20by%20the,(30x16%20with%2099%20mines).
+    """
+    DIFFICULTY_PRESETS = {
+        'easy': {'rows': 8, 'columns': 8, 'mines': 10},
+        'intermediate': {'rows': 16, 'columns': 16, 'mines': 40},
+        'advanced': {'rows': 16, 'columns': 30, 'mines': 99}
+    }
+
+    # Default to easy difficulty
+    CURRENT_DIFFICULTY = 'easy'
+
+    # Update class variables to use the easy preset by default
+    ROW = DIFFICULTY_PRESETS['easy']['rows']
+    COLUMNS = DIFFICULTY_PRESETS['easy']['columns']
+    MINES = DIFFICULTY_PRESETS['easy']['mines']
     window = tk.Tk()
-    ROW = 10
-    COLUMNS = 7
-    MINES = 7
     IS_GAME_OVER = False
     IS_LOSS = False
     IS_WIN = False
     IS_FIRST_CLICK = True
     window.geometry('+800+200')
+
+    def change_difficulty(self, difficulty: str):
+        """Change the game difficulty and reload the board."""
+        if difficulty in self.DIFFICULTY_PRESETS:
+            MineSweeper.CURRENT_DIFFICULTY = difficulty
+            preset = self.DIFFICULTY_PRESETS[difficulty]
+            MineSweeper.ROW = preset['rows']
+            MineSweeper.COLUMNS = preset['columns']
+            MineSweeper.MINES = preset['mines']
+            self.reload()
 
     def __init__(self):
         self.buttons = []
@@ -289,7 +332,7 @@ class MineSweeper:
         self.solve_total_time = 0.0
         self.move_count = 0
         self.testing = False
-        
+
         for i in range(self.ROW+2):
             temp = []
             for j in range(self.COLUMNS+2):
@@ -304,8 +347,8 @@ class MineSweeper:
         self.mine_img = ImageTk.PhotoImage(Image.open("img/mine.png"))
 
         # Timer label
-        self.timer_label = tk.Label(self.window, text="Time: 0.00s | Moves: 0", font=('Calibri', 12))
-
+        self.timer_label = tk.Label(
+            self.window, text="Time: 0.00s | Moves: 0", font=('Calibri', 12))
 
     def insert_mines(self, number: int):
         index_mines = self.get_mines_places(number)
@@ -388,7 +431,8 @@ class MineSweeper:
             if self.testing:
                 if test.is_first_run:
                     test.game_results = []
-                test.game_results.append([False, self.solve_total_time, self.move_count])
+                test.game_results.append(
+                    [False, self.solve_total_time, self.move_count])
                 self.window.quit()
                 return
 
@@ -418,7 +462,8 @@ class MineSweeper:
             if self.testing:
                 if test.is_first_run:
                     test.game_results = []
-                test.game_results.append([True, self.solve_total_time, self.move_count])
+                test.game_results.append(
+                    [True, self.solve_total_time, self.move_count])
                 self.window.quit()
                 return
 
@@ -458,7 +503,7 @@ class MineSweeper:
             x, y = self.solver.make_move()
             btn = self.buttons[x][y]
             self.click(btn)
-            
+
             # Update move count and timer
             self.move_count += 1
             current_time = time.time()
@@ -466,7 +511,8 @@ class MineSweeper:
             self.update_timer_label()
 
     def update_timer_label(self):
-        self.timer_label.config(text=f"Time: {self.solve_total_time:.2f}s | Moves: {self.move_count}")
+        self.timer_label.config(
+            text=f"Time: {self.solve_total_time:.2f}s | Moves: {self.move_count}")
 
     def toggle_auto_solve(self):
         self.auto_solve = not self.auto_solve
@@ -511,7 +557,7 @@ class MineSweeper:
         self.create_widgets()
         MineSweeper.IS_FIRST_CLICK = True
         MineSweeper.IS_GAME_OVER = False
-        
+
         # Reset timer and move count
         self.solve_start_time = None
         self.solve_total_time = 0.0
@@ -521,21 +567,49 @@ class MineSweeper:
     def create_settings_win(self):
         win_settings = tk.Toplevel(self.window)
         win_settings.wm_title('Settings')
-        tk.Label(win_settings, text='Rows').grid(row=0, column=0)
+
+        # Difficulty selection
+        tk.Label(win_settings, text='Difficulty').grid(row=0, column=0)
+        difficulty_var = tk.StringVar(value=self.CURRENT_DIFFICULTY)
+        difficulty_frame = tk.Frame(win_settings)
+        difficulty_frame.grid(row=0, column=1, padx=20, pady=10)
+
+        for diff in self.DIFFICULTY_PRESETS.keys():
+            tk.Radiobutton(
+                difficulty_frame,
+                text=diff.capitalize(),
+                variable=difficulty_var,
+                value=diff,
+                command=lambda d=diff: self.change_difficulty(d)
+            ).pack(side=tk.LEFT)
+
+        # Custom settings section
+        tk.Label(win_settings, text='Custom Settings').grid(
+            row=1, column=0, columnspan=2, pady=(20, 5))
+
+        tk.Label(win_settings, text='Rows').grid(row=2, column=0)
         row_entry = tk.Entry(win_settings)
         row_entry.insert(0, self.ROW)
-        row_entry.grid(row=0, column=1, padx=20, pady=20)
-        tk.Label(win_settings, text='Columns').grid(row=1, column=0)
+        row_entry.grid(row=2, column=1, padx=20, pady=5)
+
+        tk.Label(win_settings, text='Columns').grid(row=3, column=0)
         column_entry = tk.Entry(win_settings)
         column_entry.insert(0, self.COLUMNS)
-        column_entry.grid(row=1, column=1, padx=20, pady=20)
-        tk.Label(win_settings, text='Mines').grid(row=2, column=0)
+        column_entry.grid(row=3, column=1, padx=20, pady=5)
+
+        tk.Label(win_settings, text='Mines').grid(row=4, column=0)
         mine_entry = tk.Entry(win_settings)
         mine_entry.insert(0, self.MINES)
-        mine_entry.grid(row=2, column=1, padx=20, pady=20)
-        save_btn = tk.Button(win_settings, text='Apply',
-                             command=lambda: self.change_settings(row_entry, column_entry, mine_entry))
-        save_btn.grid(row=3, column=8, columnspan=2, padx=20, pady=20)
+        mine_entry.grid(row=4, column=1, padx=20, pady=5)
+
+        save_btn = tk.Button(
+            win_settings,
+            text='Apply Custom',
+            command=lambda: self.change_settings(
+                row_entry, column_entry, mine_entry)
+        )
+        save_btn.grid(row=5, column=0, columnspan=2, pady=20)
+
         win_settings.geometry('+790+300')
 
     def change_settings(self, row: tk.Entry, column: tk.Entry, mine: tk.Entry):
@@ -568,19 +642,21 @@ class MineSweeper:
 
 
 if __name__ == "__main__":
-    # Create argument parser and update the arguments
-    # Resource used for understanding argparse - https://www.geeksforgeeks.org/command-line-option-and-argument-parsing-using-argparse-in-python/
     parser = argparse.ArgumentParser(description="Minesweeper Game vs Testing")
-    parser.add_argument('-test', type=int, help="Run testing for a given number of games", default=None)
+    parser.add_argument(
+        '-test', type=int, help="Run testing for a given number of games", default=None)
+    parser.add_argument('-difficulty', type=str, choices=['easy', 'intermediate', 'advanced'],
+                        help="Set the difficulty level for testing or gameplay", default=None)
 
     args = parser.parse_args()
 
-    # Run the game if no test flag is given
     if args.test is None:
+        # Run the game
         game = MineSweeper()
+        if args.difficulty:
+            game.change_difficulty(args.difficulty)
         game.start()
-
-    # If test flag is given, run the tester with the number of games specified
     else:
+        # Run testing with specified difficulty
         test = MinesweeperTester
-        test.run_testing(args.test)
+        test.run_testing(args.test, args.difficulty)
