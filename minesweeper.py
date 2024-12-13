@@ -228,7 +228,8 @@ class MinesweeperTester:
         if difficulty:
             MinesweeperTester.set_difficulty(game, difficulty)
         game.testing = True
-        game.start()
+        # Use headless mode instead of GUI
+        game.start_headless()
 
     @classmethod
     def run_testing(cls, num_games, difficulty=None):
@@ -307,12 +308,6 @@ class MineSweeper:
     ROW = DIFFICULTY_PRESETS['easy']['rows']
     COLUMNS = DIFFICULTY_PRESETS['easy']['columns']
     MINES = DIFFICULTY_PRESETS['easy']['mines']
-    window = tk.Tk()
-    IS_GAME_OVER = False
-    IS_LOSS = False
-    IS_WIN = False
-    IS_FIRST_CLICK = True
-    window.geometry('+800+200')
 
     def change_difficulty(self, difficulty: str):
         """Change the game difficulty and reload the board."""
@@ -325,30 +320,40 @@ class MineSweeper:
             self.reload()
 
     def __init__(self):
+        self.testing = False  # Skip GUI initialization if in testing mode
         self.buttons = []
         self.solver = MinesweeperSolver(self)
         self.auto_solve = False
         self.solve_start_time = None
         self.solve_total_time = 0.0
         self.move_count = 0
-        self.testing = False
 
-        for i in range(self.ROW+2):
-            temp = []
-            for j in range(self.COLUMNS+2):
-                btn = MyButton(self.window, x=i, y=j)
-                btn.config(command=lambda button=btn: self.click(button))
-                btn.bind('<Button-3>', self.right_click)
-                temp.append(btn)
-            self.buttons.append(temp)
+        self.IS_GAME_OVER = False
+        self.IS_LOSS = False
+        self.IS_WIN = False
+        self.IS_FIRST_CLICK = True
 
-        # Load images after initializing Tkinter window
-        self.flag_img = ImageTk.PhotoImage(Image.open("img/flag.png"))
-        self.mine_img = ImageTk.PhotoImage(Image.open("img/mine.png"))
+        # Only initialize GUI elements if NOT in testing mode
+        if not self.testing:
+            self.window = tk.Tk()
+            self.window.geometry('+800+200')
 
-        # Timer label
-        self.timer_label = tk.Label(
-            self.window, text="Time: 0.00s | Moves: 0", font=('Calibri', 12))
+            for i in range(self.ROW+2):
+                temp = []
+                for j in range(self.COLUMNS+2):
+                    btn = MyButton(self.window, x=i, y=j)
+                    btn.config(command=lambda button=btn: self.click(button))
+                    btn.bind('<Button-3>', self.right_click)
+                    temp.append(btn)
+                self.buttons.append(temp)
+
+            # Load images after initializing Tkinter window
+            self.flag_img = ImageTk.PhotoImage(Image.open("img/flag.png"))
+            self.mine_img = ImageTk.PhotoImage(Image.open("img/mine.png"))
+
+            # Timer label
+            self.timer_label = tk.Label(
+                self.window, text="Time: 0.00s | Moves: 0", font=('Calibri', 12))
 
     def insert_mines(self, number: int):
         index_mines = self.get_mines_places(number)
@@ -358,6 +363,41 @@ class MineSweeper:
                 btn = self.buttons[i][j]
                 if btn.number in index_mines:
                     btn.is_mine = True
+
+    def start_headless(self):
+        """Start the game in headless mode (no GUI) for faster testing"""
+        if not self.testing:
+            return
+
+        # Initialize the game board without GUI elements
+        self.buttons = []
+        for i in range(self.ROW+2):
+            temp = []
+            for j in range(self.COLUMNS+2):
+                btn = MyButton(None, x=i, y=j)  # None as master means no GUI
+                btn.number = (i-1) * self.COLUMNS + \
+                    j if 1 <= i <= self.ROW and 1 <= j <= self.COLUMNS else 0
+                temp.append(btn)
+            self.buttons.append(temp)
+
+        # Start timer
+        self.solve_start_time = time.time()
+
+        # Make first move (center)
+        center_x, center_y = self.ROW // 2, self.COLUMNS // 2
+        first_btn = self.buttons[center_x][center_y]
+        self.click(first_btn)
+
+        # Keep making moves until game is over
+        while not self.IS_GAME_OVER:
+            x, y = self.solver.make_move()
+            btn = self.buttons[x][y]
+            self.click(btn)
+            self.move_count += 1
+
+            # Update total time
+            current_time = time.time()
+            self.solve_total_time = current_time - self.solve_start_time
 
     def get_mines_places(self, exclude_number: int):
         indexes = list(range(1, self.COLUMNS * self.ROW + 1))
@@ -402,7 +442,7 @@ class MineSweeper:
                 btn.count_bomb = count_bomb
 
     def right_click(self, event):
-        if self.IS_GAME_OVER:
+        if self.IS_GAME_OVER or self.testing:  # Don't handle right clicks in testing mode
             return
         cur_btn = event.widget
         if cur_btn['state'] == 'normal':
@@ -418,11 +458,11 @@ class MineSweeper:
         if self.IS_FIRST_CLICK:
             self.insert_mines(clicked_button.number)
             self.count_mine_in_buttons()
-            # self.print_buttons()
             self.IS_FIRST_CLICK = False
         if clicked_button.is_mine:
-            clicked_button.config(image=self.mine_img, background='red',
-                                  disabledforeground='black')
+            if not self.testing:  # Only try to show images in GUI mode
+                clicked_button.config(image=self.mine_img, background='red',
+                                      disabledforeground='black')
             clicked_button.is_open = True
             self.IS_GAME_OVER = True
             self.IS_LOSS = True
@@ -437,11 +477,12 @@ class MineSweeper:
                 return
 
             showinfo('Game over', 'You lose!')
-            for i in range(1, self.ROW+1):
-                for j in range(1, self.COLUMNS+1):
-                    btn = self.buttons[i][j]
-                    if btn.is_mine:
-                        btn['image'] = self.mine_img
+            if not self.testing:  # Only try to show images in GUI mode
+                for i in range(1, self.ROW+1):
+                    for j in range(1, self.COLUMNS+1):
+                        btn = self.buttons[i][j]
+                        if btn.is_mine:
+                            btn['image'] = self.mine_img
         else:
             color = colors.get(clicked_button.count_bomb, 'black')
             if clicked_button.count_bomb:
@@ -552,11 +593,16 @@ class MineSweeper:
         self.add_ai_controls()
 
     def reload(self):
-        [child.destroy() for child in self.window.winfo_children()]
+        if not self.testing:
+            [child.destroy() for child in self.window.winfo_children()]
+
         self.__init__()
-        self.create_widgets()
-        MineSweeper.IS_FIRST_CLICK = True
-        MineSweeper.IS_GAME_OVER = False
+
+        if not self.testing:
+            self.create_widgets()
+
+        self.IS_FIRST_CLICK = True
+        self.IS_GAME_OVER = False
 
         # Reset timer and move count
         self.solve_start_time = None
@@ -635,10 +681,11 @@ class MineSweeper:
             print()
 
     def start(self):
-        self.create_widgets()
-        if self.testing:
-            self.toggle_auto_solve()
-        MineSweeper.window.mainloop()
+        if not self.testing:
+            self.create_widgets()
+            self.window.mainloop()
+        else:
+            self.start_headless()
 
 
 if __name__ == "__main__":
