@@ -189,37 +189,41 @@ class MinesweeperSolver:
                         probabilities[pos] = max(probabilities[pos], prob)
 
         return probabilities
+    
 
     # Get the unopened cell with the lowest risk probability
     def get_lowest_risk_move(self) -> Tuple[int, int]:
         probabilities = self.calculate_cell_probabilities()
 
         if not probabilities:
+            print("Probabilities Not Calculated")
             # If no probabilities calculated, choose first unopened cell
             for i in range(1, self.game.ROW + 1):
                 for j in range(1, self.game.COLUMNS + 1):
                     if not self.game.buttons[i][j].is_open:
                         return (i, j)
-
+        
         # Return position with lowest probability of being a mine
         return min(probabilities.items(), key=lambda x: x[1])[0]
 
-    def make_move(self) -> Tuple[int, int]:
+    def make_move(self):# -> Tuple[int, int]:
         # First click should be in the center
         if self.game.IS_FIRST_CLICK:
-            return (self.game.ROW // 2, self.game.COLUMNS // 2)
+            return (self.game.ROW // 2, self.game.COLUMNS // 2), 0
 
         # Click any known safe cells
         if self.known_safe:
-            return self.known_safe.pop()
+            return self.known_safe.pop(), 0
 
         # Apply solving techniques
         while self.basic_solve() or self.advanced_solve():
             if self.known_safe:
-                return self.known_safe.pop()
-
+                ret_coord = self.known_safe.pop()
+                return ret_coord, 0
+        
         # If no safe moves found, use probability estimation
-        return self.get_lowest_risk_move()
+        ret_coord = self.get_lowest_risk_move()
+        return ret_coord, 1
     
 
 # Test class
@@ -227,8 +231,8 @@ class MinesweeperTester:
     def _init__(self):
         self.test = test
         self.is_first_run = True
-        # list of list of results for each game [is_win, time, num_moves]
-        self.game_results: List[List[bool, float, int]] = []
+        # list of list of results for each game [is_win, time, num_moves, guesses]
+        self.game_results: List[List[bool, float, int, int]] = []
 
     @staticmethod
     def set_difficulty(game, difficulty):
@@ -254,6 +258,7 @@ class MinesweeperTester:
         is_win_index = 0
         time_index = 1
         num_moves_index = 2
+        guesses_index = 3
 
         # Initialize variables to keep track of totals
         total_wins = 0
@@ -263,6 +268,8 @@ class MinesweeperTester:
         win_times = []
         loss_steps = []
         win_steps = []
+        loss_guesses = []
+        win_guesses = []
 
         # Loop for number of games desired for testing
         for this_game in tqdm(range(num_games)):
@@ -279,10 +286,14 @@ class MinesweeperTester:
                 total_wins += 1
                 win_times.append(test.game_results[this_game][time_index] * 1000)
                 win_steps.append(test.game_results[this_game][num_moves_index])
+                win_guesses.append(test.game_results[this_game][guesses_index])
             else:
                 total_losses += 1
                 loss_times.append(test.game_results[this_game][time_index] * 1000)
                 loss_steps.append(test.game_results[this_game][num_moves_index])
+                loss_guesses.append(test.game_results[this_game][guesses_index])
+
+            
 
         # Print results with difficulty information
 
@@ -295,12 +306,14 @@ class MinesweeperTester:
         print("---")
 
         print(f"Average Time To Win: {np.mean(win_times):.2f} ms" if total_wins > 0 else "Average Time To Win: N/A")
+        print(f"Average Guesses in Win: {np.mean(win_guesses):.2f} " if total_losses > 0 else "Average Guesses in Loss: N/A")
         print(f"Average Steps To Win: {np.mean(win_steps):.2f}" if total_wins > 0 else "Average Steps To Win: N/A")
         print(f"Median Steps To Win: {np.median(win_steps):.2f}" if total_wins > 0 else "Median Steps To Win: N/A")
         print(f"Standard Deviation Steps To Win: {np.std(win_steps):.2f}" if total_wins > 0 else "Standard Deviation Steps To Win: N/A")
         print("---")
 
         print(f"Average Time To Lose: {np.mean(loss_times):.2f} ms" if total_losses > 0 else "Average Time To Lose: N/A")
+        print(f"Average Guesses in Loss: {np.mean(loss_guesses):.2f} " if total_losses > 0 else "Average Guesses in Loss: N/A")
         print(f"Average Steps To Lose: {np.mean(loss_steps):.2f}" if total_losses > 0 else "Average Steps To Lose: N/A")
         print(f"Median Steps To Lose: {np.median(loss_steps):.2f}" if total_losses > 0 else "Median Steps To Lose: N/A")
         print(f"Standard Deviation Steps To Lose: {np.std(loss_steps):.2f}" if total_losses > 0 else "Standard Deviation Steps To Lose: N/A")
@@ -308,10 +321,10 @@ class MinesweeperTester:
 
         print("---")
 
-        cls.graph_frequencies(loss_steps, 4)
+        cls.graph_frequencies(loss_steps, 4, difficulty)
 
     @classmethod
-    def graph_frequencies(cls, list, bucket_size):
+    def graph_frequencies(cls, list, bucket_size, difficulty):
         plt.ioff()  # Disable interactive mode temporarily
         
         max_value = max(list) if list else 0
@@ -319,12 +332,18 @@ class MinesweeperTester:
 
         hist, bin_edges = np.histogram(list, bins=bins)
         plt.bar(bin_edges[:-1], hist, width=bucket_size, edgecolor="black", align="edge")
-        plt.xlabel("Number of Steps to Lose (Buckets of 10)")
+        plt.xlabel(f"Number of Steps to Lose (Buckets of {bucket_size})")
         plt.ylabel("Frequency")
         plt.title("Frequency of Steps to Lose")
 
         plt.tight_layout()
-        plt.savefig("./Intermediate_Step_Frequencies.png")
+        if difficulty == "easy":
+            plt.savefig("./Easy_Step_Frequencies.png")
+        elif difficulty == "intermediate":
+            plt.savefig("./Intermediate_Step_Frequencies.png")
+        elif difficulty == "advanced":
+            plt.savefig("./Advanced_Step_Frequencies.png")
+
         plt.close('all')  # Close all open figures to free resources
         
         
@@ -375,6 +394,7 @@ class MineSweeper:
         self.solve_start_time = None
         self.solve_total_time = 0.0
         self.move_count = 0
+        self.guesses = 0
 
         self.IS_GAME_OVER = False
         self.IS_LOSS = False
@@ -438,7 +458,9 @@ class MineSweeper:
 
         # Keep making moves until game is over
         while not self.IS_GAME_OVER:
-            x, y = self.solver.make_move()
+            move_coords, guesses = self.solver.make_move()
+            self.guesses += guesses
+            x, y = move_coords
             btn = self.buttons[x][y]
             self.click(btn)
 
@@ -544,7 +566,7 @@ class MineSweeper:
                 if test.is_first_run:
                     test.game_results = []
                 test.game_results.append(
-                    [False, self.solve_total_time, self.move_count])
+                    [False, self.solve_total_time, self.move_count, self.guesses])
                 self.window.quit()
                 return
 
@@ -583,7 +605,7 @@ class MineSweeper:
                 if test.is_first_run:
                     test.game_results = []
                 test.game_results.append(
-                    [True, self.solve_total_time, self.move_count])
+                    [True, self.solve_total_time, self.move_count, self.guesses])
                 self.window.quit()
                 return
 
@@ -620,7 +642,9 @@ class MineSweeper:
             if self.solve_start_time is None:
                 self.solve_start_time = time.time()
 
-            x, y = self.solver.make_move()
+            move_coords, guesses = self.solver.make_move()
+            self.guesses += guesses
+            x, y = move_coords
             btn = self.buttons[x][y]
             self.click(btn)
 
