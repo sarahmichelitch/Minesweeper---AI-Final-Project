@@ -418,8 +418,17 @@ class MineSweeper:
 
     def get_mines_places(self, exclude_number: int):
         indexes = list(range(1, self.COLUMNS * self.ROW + 1))
-        # print(f'Exclude number {exclude_number}')
-        indexes.remove(exclude_number)
+        
+        safe_squares = []
+        for i in [-1, 0, 1]:
+            for j in [-1, 0, 1]:
+                safe_squares.append(exclude_number + i * self.COLUMNS + j)
+        
+        for i in safe_squares:
+            if i > 0 and i < self.COLUMNS * self.ROW + 1:
+                indexes.remove(i)
+        
+
         shuffle(indexes)
         return indexes[:self.MINES]
 
