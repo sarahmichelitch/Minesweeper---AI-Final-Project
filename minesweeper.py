@@ -321,10 +321,19 @@ class MinesweeperTester:
 
         print("---")
 
-        cls.graph_frequencies(loss_steps, 4, difficulty)
+        cls.graph_frequencies(loss_steps, difficulty)
 
     @classmethod
-    def graph_frequencies(cls, list, bucket_size, difficulty):
+    def graph_frequencies(cls, list, difficulty):
+
+        if difficulty == "easy":
+            bucket_size = 4
+        elif difficulty == "intermediate":
+            bucket_size = 7
+        elif difficulty == "advanced":
+            bucket_size = 10
+
+
         plt.ioff()  # Disable interactive mode temporarily
         
         max_value = max(list) if list else 0
